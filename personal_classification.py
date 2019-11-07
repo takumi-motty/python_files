@@ -32,7 +32,7 @@ w_csv_path = '/Users/motty/Desktop/for_research/measure_data/2019_0611/watanabe/
 num = 1
 
 # 分割数
-divide_number = 22
+divide_number = 100
 
 # 特徴数
 fn = 5 + ((divide_number-1)*2)
@@ -40,13 +40,13 @@ fn = 5 + ((divide_number-1)*2)
 # fn =(divide_number-1)*2
 
 # スライディングウィンドウの窓幅
-window_width = 3
+window_width = 2
 
 # 注視点だと判別するための閾値
 norm_threshold = 100
 
 # 注視点の幅を指定
-fixation_width = 5
+fixation_width = 3
 
 # 分割・平均化した座標を算出
 def getDivideAverage(list):
@@ -117,11 +117,35 @@ def getFixations(listxy, label):
 
     return fixations_list
 
+# 二次元配列から分散を算出
+def getListVar(list):
+    listvar = []
+    listcalc = []
+    for i in range(len(list)):
+        listcalc.append(np.var(list[i]))
+
+    listvar.append(max(listcalc))
+    listvar.append(min(listcalc))
+    # listvar.append(average(listcalc))
+    return listvar
+
+# 二次元配列から標準偏差を算出
+def getListStd(list):
+    liststd = []
+    listcalc = []
+    for i in range(len(list)):
+        listcalc.append(np.std(list[i]))
+
+    liststd.append(max(listcalc))
+    liststd.append(min(listcalc))
+    liststd.append(sum(listcalc) / len(listcalc))
+    print(liststd)
+    return liststd
+
 def getFeatures(csv_path, name):
 
     filename = pd.read_csv(csv_path)
     feature = []
-
 
     for num in range(1,31):
 
@@ -158,6 +182,16 @@ def getFeatures(csv_path, name):
         # x, y座標の注視を抽出
         xfixs = getFixations(x, fixation_labels)
         yfixs = getFixations(y, fixation_labels)
+        # print(fixation_labels)
+        # print(xfixs)
+
+        # 注視点の分散を算出
+        xfixs_var = getListVar(xfixs)
+        yfixs_var = getListVar(yfixs)
+
+        #注視点の標準偏差を算出
+        xfixs_std = getListStd(xfixs)
+        yfixs_std = getListStd(yfixs)
 
         draw_time = len(listx)
 

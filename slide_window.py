@@ -23,7 +23,12 @@ m_csv_path = '/Users/motty/Desktop/for_research/se/5/5matome.csv'
 divide_number = 100
 
 # スライディングウィンドウの窓幅
-window_width = 10
+window_width = 3
+
+norm_threshold = 100
+
+# 注視点の幅を指定
+fixation_width = 5
 
 # 分割・平均化した座標を算出
 def getDivideAverage(list):
@@ -51,16 +56,47 @@ def getAmountChange(list):
 def slidingWindowCalcNorm(listx, listy):
     norms = []
 
-    for i in range(1, len(listx)):
+    for i in range(len(listx)-window_width+1):
         sumx = 0
         sumy = 0
         subnorms = []
         for j in range(i, i + window_width):
-            sumx += (listx[i]-listx[i-1])**2
-            sumy += (listy[i]-listy[i-1])**2
+            sumx += (listx[j]-listx[j-1])**2
+            sumy += (listy[j]-listy[j-1])**2
         norms.append(math.sqrt(sumx + sumy))
 
     return norms
+
+def getLabel(listnorms):
+    label = []
+    flag = 0
+    fixation = 1
+
+    for i in range(0, len(listnorms)-1):
+        if listnorms[i] < norm_threshold:
+            label.append(fixation)
+        else:
+            label.append(-1)
+
+    #分割数に合わせるために窓幅分だけラベルを格納した配列の拡張(末尾の値を入れる)
+    for i in range(window_width):
+        label.append(label[-1])
+
+    return label
+
+def getFixations(listxy, label):
+    fixation = []
+    fixations_list = []
+    for i in range(len(listxy)):
+        if label[i] == 1:
+            fixation.append(listxy[i])
+        else:
+            if(fixation != []):
+                fixations_list.append(fixation)
+                fixation = []
+
+    return fixations_list
+
 
 def getNorms(csv_path, name):
 
@@ -96,15 +132,22 @@ def getNorms(csv_path, name):
     #     print(y[i])
 
     result = slidingWindowCalcNorm(x, y)
-
-    return np.array(result, np.float32)
+    motty_labels = getLabel(result)
+    print(motty_labels)
+    fixs = getFixations(x, motty_labels)
+    # return np.array(result, np.float32)
+    return fixs
 
 def main():
+
     motty_norms = getNorms(m_csv_path, 'm')
+    print(motty_norms)
+
 
     # 計算したノルムを表示
-    for i in range(0, len(motty_norms)):
+    for i in range(len(motty_norms)):
         print(motty_norms[i])
+    # print(len(motty_labels))
 
 
 if __name__ == '__main__':

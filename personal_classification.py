@@ -124,9 +124,10 @@ def getListVar(list):
     for i in range(len(list)):
         listcalc.append(np.var(list[i]))
 
+    # 分散の最大値・最小値・平均値算出
     listvar.append(max(listcalc))
     listvar.append(min(listcalc))
-    # listvar.append(average(listcalc))
+    listvar.append(sum(listcalc) / len(listcalc))
     return listvar
 
 # 二次元配列から標準偏差を算出
@@ -136,11 +137,22 @@ def getListStd(list):
     for i in range(len(list)):
         listcalc.append(np.std(list[i]))
 
+    # 標準偏差の最大値・最小値・平均値算出
     liststd.append(max(listcalc))
     liststd.append(min(listcalc))
     liststd.append(sum(listcalc) / len(listcalc))
-    print(liststd)
     return liststd
+
+# 複数の注視から注視の平均時間，最大時間を算出
+def getFixationTime(list):
+    times = []
+    fixation_time = []
+    for i in range(len(list)):
+        times.append(len(list[i]))
+    fixation_time.append(sum(times) / len(times))
+    fixation_time.append(max(times))
+    print(fixation_time)
+    return fixation_time
 
 def getFeatures(csv_path, name):
 
@@ -176,9 +188,9 @@ def getFeatures(csv_path, name):
         yac = getAmountChange(y)
 
         # スライディングウィンドウでノルム算出
-        result = slidingWindowCalcNorm(x, y)
+        norms = slidingWindowCalcNorm(x, y)
         # ノルムから注視点のラベルを算出
-        fixation_labels = getLabel(result)
+        fixation_labels = getLabel(norms)
         # x, y座標の注視を抽出
         xfixs = getFixations(x, fixation_labels)
         yfixs = getFixations(y, fixation_labels)
@@ -192,6 +204,12 @@ def getFeatures(csv_path, name):
         #注視点の標準偏差を算出
         xfixs_std = getListStd(xfixs)
         yfixs_std = getListStd(yfixs)
+
+        # 注視時間の特徴量を抽出
+        fixation_time = getFixationTime(xfixs)
+
+        # 注視回数を抽出
+        fixation_count = len(xfixs)
 
         draw_time = len(listx)
 

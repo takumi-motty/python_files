@@ -39,6 +39,15 @@ fn = 5 + ((divide_number-1)*2)
 # fn =2
 # fn =(divide_number-1)*2
 
+# スライディングウィンドウの窓幅
+window_width = 3
+
+# 注視点だと判別するための閾値
+norm_threshold = 100
+
+# 注視点の幅を指定
+fixation_width = 5
+
 # 分割・平均化した座標を算出
 def getDivideAverage(list):
     index = 0
@@ -61,6 +70,52 @@ def getAmountChange(list):
     for k in range(0, len(list)-1):
         ac.append(list[k+1]-list[k])
     return ac
+
+def slidingWindowCalcNorm(listx, listy):
+    norms = []
+
+    for i in range(len(listx)-window_width+1):
+        sumx = 0
+        sumy = 0
+        subnorms = []
+        for j in range(i, i + window_width):
+            sumx += (listx[j]-listx[j-1])**2
+            sumy += (listy[j]-listy[j-1])**2
+        norms.append(math.sqrt(sumx + sumy))
+
+    return norms
+
+def getLabel(listnorms):
+    label = []
+    flag = 0
+    fixation = 1
+
+    for i in range(0, len(listnorms)-1):
+        if listnorms[i] < norm_threshold:
+            label.append(fixation)
+        else:
+            label.append(-1)
+
+    #分割数に合わせるために窓幅分だけラベルを格納した配列の拡張(末尾の値を入れる)
+    for i in range(window_width):
+        label.append(label[-1])
+
+    return label
+
+def getFixations(listxy, label):
+    fixation = []
+    fixations_list = []
+    for i in range(len(listxy)):
+        if label[i] == 1:
+            fixation.append(listxy[i])
+        else:
+            if(fixation != []):
+                # 注視点候補箇所の幅が閾値以上だったら
+                if len(fixation) >= fixation_width:
+                    fixations_list.append(fixation)
+                fixation = []
+
+    return fixations_list
 
 def getFeatures(csv_path, name):
 
@@ -95,6 +150,14 @@ def getFeatures(csv_path, name):
 
         xac = getAmountChange(x)
         yac = getAmountChange(y)
+
+        # スライディングウィンドウでノルム算出
+        result = slidingWindowCalcNorm(x, y)
+        # ノルムから注視点のラベルを算出
+        fixation_labels = getLabel(result)
+        # x, y座標の注視を抽出
+        xfixs = getFixations(x, fixation_labels)
+        yfixs = getFixations(y, fixation_labels)
 
         draw_time = len(listx)
 

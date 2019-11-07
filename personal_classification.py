@@ -35,7 +35,7 @@ num = 1
 divide_number = 100
 
 # 特徴数
-fn = 5 + ((divide_number-1)*2)
+fn = 20 + ((divide_number-1)*2)
 # fn =2
 # fn =(divide_number-1)*2
 
@@ -151,7 +151,6 @@ def getFixationTime(list):
         times.append(len(list[i]))
     fixation_time.append(sum(times) / len(times))
     fixation_time.append(max(times))
-    print(fixation_time)
     return fixation_time
 
 def getFeatures(csv_path, name):
@@ -187,6 +186,8 @@ def getFeatures(csv_path, name):
         xac = getAmountChange(x)
         yac = getAmountChange(y)
 
+        draw_time = len(listx)
+
         # スライディングウィンドウでノルム算出
         norms = slidingWindowCalcNorm(x, y)
         # ノルムから注視点のラベルを算出
@@ -211,8 +212,7 @@ def getFeatures(csv_path, name):
         # 注視回数を抽出
         fixation_count = len(xfixs)
 
-        draw_time = len(listx)
-
+        # ここで抽出した特徴量をぶち込む
         feature.extend(xac)
         feature.extend(yac)
         feature.append(bunx)
@@ -220,6 +220,12 @@ def getFeatures(csv_path, name):
         feature.append(hyox)
         feature.append(hyoy)
         feature.append(draw_time)
+        feature.extend(fixation_time)
+        feature.extend(xfixs_var)
+        feature.extend(yfixs_var)
+        feature.extend(xfixs_std)
+        feature.extend(yfixs_std)
+        feature.append(fixation_count)
 
     # 配列に叩き込むルート
     result = [feature[i:i+fn] for i in range(0, len(feature), fn)]

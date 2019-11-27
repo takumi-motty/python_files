@@ -35,18 +35,20 @@ num = 1
 divide_number = 100
 
 # 特徴数
-fn = 20 + ((divide_number-1)*2)
+# fn = 20 + ((divide_number-1)*2)
+fn = 20
 # fn =2
 # fn =(divide_number-1)*2
 
+
 # スライディングウィンドウの窓幅
-window_width = 2
+window_width = 5
 
 # 注視点だと判別するための閾値
 norm_threshold = 100
 
 # 注視点の幅を指定
-fixation_width = 3
+fixation_width = 5
 
 # 分割・平均化した座標を算出
 def getDivideAverage(list):
@@ -82,6 +84,10 @@ def slidingWindowCalcNorm(listx, listy):
             sumx += (listx[j]-listx[j-1])**2
             sumy += (listy[j]-listy[j-1])**2
         norms.append(math.sqrt(sumx + sumy))
+    for j in range(0, window_width):
+        norms.append(norms[-1])
+
+    norms[0] = norms[1]
 
     return norms
 
@@ -96,12 +102,11 @@ def getLabel(listnorms):
         else:
             label.append(-1)
 
-    #分割数に合わせるために窓幅分だけラベルを格納した配列の拡張(末尾の値を入れる)
-    for i in range(window_width):
-        label.append(label[-1])
+
 
     return label
 
+# x,y座標の注視点を二次元配列で取得
 def getFixations(listxy, label):
     fixation = []
     fixations_list = []
@@ -109,11 +114,14 @@ def getFixations(listxy, label):
         if label[i] == 1:
             fixation.append(listxy[i])
         else:
-            if(fixation != []):
+            # if(fixation != []):
                 # 注視点候補箇所の幅が閾値以上だったら
-                if len(fixation) >= fixation_width:
-                    fixations_list.append(fixation)
-                fixation = []
+            if len(fixation) >= fixation_width:
+                fixations_list.append(fixation)
+            fixation = []
+    if(fixation != []):
+        fixations_list.append(fixation)
+        fixation = []
 
     return fixations_list
 
@@ -123,11 +131,17 @@ def getListVar(list):
     listcalc = []
     for i in range(len(list)):
         listcalc.append(np.var(list[i]))
+    if listcalc == []:
+        listcalc = [0,0,0]
 
     # 分散の最大値・最小値・平均値算出
-    listvar.append(max(listcalc))
-    listvar.append(min(listcalc))
-    listvar.append(sum(listcalc) / len(listcalc))
+    if listcalc != []:
+        listvar.append(max(listcalc))
+        listvar.append(min(listcalc))
+        listvar.append(sum(listcalc) / len(listcalc))
+    else:
+        listvar = [0,0,0]
+
     return listvar
 
 # 二次元配列から標準偏差を算出
@@ -138,9 +152,13 @@ def getListStd(list):
         listcalc.append(np.std(list[i]))
 
     # 標準偏差の最大値・最小値・平均値算出
-    liststd.append(max(listcalc))
-    liststd.append(min(listcalc))
-    liststd.append(sum(listcalc) / len(listcalc))
+    if listcalc == []:
+        liststd = [0,0,0]
+    else:
+        liststd.append(max(listcalc))
+        liststd.append(min(listcalc))
+        liststd.append(sum(listcalc) / len(listcalc))
+
     return liststd
 
 # 複数の注視から注視の平均時間，最大時間を算出
@@ -149,8 +167,12 @@ def getFixationTime(list):
     fixation_time = []
     for i in range(len(list)):
         times.append(len(list[i]))
-    fixation_time.append(sum(times) / len(times))
-    fixation_time.append(max(times))
+    if fixation_time != []:
+        fixation_time.append(sum(times) / len(times))
+        fixation_time.append(max(times))
+    else:
+        fixation_time = [0,0]
+
     return fixation_time
 
 def getFeatures(csv_path, name):
@@ -213,8 +235,8 @@ def getFeatures(csv_path, name):
         fixation_count = len(xfixs)
 
         # ここで抽出した特徴量をぶち込む
-        feature.extend(xac)
-        feature.extend(yac)
+        # feature.extend(xac)
+        # feature.extend(yac)
         feature.append(bunx)
         feature.append(buny)
         feature.append(hyox)
@@ -253,27 +275,27 @@ def main():
 
     # test_features = features
 
-    # labels = np.array([
-    # 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    # 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    # 2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
-    # 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
-    # 4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4
-    # ])
-
-    # labels = np.array([
-    # 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    # 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    # 2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
-    # ])
-
     labels = np.array([
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
     1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+    2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+    3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
+    4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4
     ])
+
+    # labels = np.array([
+    # 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    # 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    # 2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
+    # ])
+
+    # labels = np.array([
+    # 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    # 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    # 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    # 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    # 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+    # ])
 
     x = features
     y = labels
@@ -348,42 +370,75 @@ def main():
         # print('F-measure:\n', f1_score(expected, predicted, average='micro'))
     # confusion matrix を一行にならす
     evaluation = total_confusion_matrix.ravel()
-    # print(total_confusion_matrix.ravel())
-    tp = evaluation[0]
-    fn = evaluation[1]
-    fp = evaluation[2]
-    tn = evaluation[3]
+    # print(total_confusion_matrix)
 
-    far = fp / (tn + fp)
-    frr = fn / (fn + tp)
-    print(far, frr)
+    # tp = evaluation[0]
+    # fn = evaluation[1]
+    # fp = evaluation[2]
+    # tn = evaluation[3]
+    #
+    # far = fp / (tn + fp)
+    # frr = fn / (fn + tp)
+    # print(far, frr)
 
     # tp, fn, fp, tn = .ravel()
     # print(tp, fp, fn, tn)
     # print(tp)
     # print('Divide number:', divide_number)
-    # print('Total accuracy:', total_accuracy / num_splits)
-    # print('F-measure:', round(total_f_measure / num_splits, 3))
-    # print('Total confusion matrix:\n', total_confusion_matrix)
+    print('Total accuracy:', total_accuracy / num_splits)
+    print('F-measure:', round(total_f_measure / num_splits, 3))
+    print('Total confusion matrix:\n', total_confusion_matrix)
 
 
-    # #
-    # #
+    # 特徴量全ての変数重要度
     # for i in range(0, divide_number-1):
-    #     print('Feature Importances, ' + 'x[' + str(i) + ']:', total_importances[i])
+    #     print('x[' + str(i) + ']:', total_importances[i])
     #
     # ind = 0
     # for j in range(divide_number-1, divide_number*2-2):
-    #     print('Feature Importances, ' + 'y[' + str(ind) + ']:', total_importances[j])
+    #     print('y[' + str(ind) + ']:', total_importances[j])
     #     ind = ind+1
+    # print('xvar:', total_importances[divide_number*2-2])
+    # print('yvar:', total_importances[divide_number*2-1])
+    # print('stdev:', total_importances[divide_number*2])
+    # print('ystdev:', total_importances[divide_number*2+1])
+    # print('draw_time:', total_importances[divide_number*2+2])
+    # print('fixation_time_max:', total_importances[divide_number*2+3])
+    # print('fixation_time_average:', total_importances[divide_number*2+4])
+    # print('fixation_xvar_max:', total_importances[divide_number*2+5])
+    # print('fixation_xvar_min:', total_importances[divide_number*2+6])
+    # print('fixation_xvar_average:', total_importances[divide_number*2+7])
+    # print('fixation_yvar_max:', total_importances[divide_number*2+8])
+    # print('fixation_yvar_min:', total_importances[divide_number*2+9])
+    # print('fixation_yvar_average:', total_importances[divide_number*2+10])
+    # print('fixation_xstv_max:', total_importances[divide_number*2+11])
+    # print('ixation_xstv_min:', total_importances[divide_number*2+12])
+    # print('fixation_xstv_average:', total_importances[divide_number*2+13])
+    # print('fixation_ystv_max:', total_importances[divide_number*2+14])
+    # print('fixation_ystv_min:', total_importances[divide_number*2+15])
+    # print('fixation_ystv_average:', total_importances[divide_number*2+16])
+    # print('fixation_count:', total_importances[divide_number*2+17])
 
-
-    # print('Feature Importance, xvar:', total_importances[divide_number*2-2])
-    # print('Feature Importance, yvar:', total_importances[divide_number*2-1])
-    # print('Feature Importance, xstdev:', total_importances[divide_number*2])
-    # print('Feature Importance, ystdev:', total_importances[divide_number*2+1])
-    # print('Feature Importance, draw_time:', total_importances[divide_number*2+2])
-    # print('Feature Importance:', total_importances[divide_number*2+3])
+    print('xvar:', total_importances[0])
+    print('yvar:', total_importances[1])
+    print('stdev:', total_importances[2])
+    print('ystdev:', total_importances[3])
+    print('draw_time:', total_importances[4])
+    print('fixation_time_max:', total_importances[5])
+    print('fixation_time_average:', total_importances[6])
+    print('fixation_xvar_max:', total_importances[7])
+    print('fixation_xvar_min:', total_importances[8])
+    print('fixation_xvar_average:', total_importances[9])
+    print('fixation_yvar_max:', total_importances[10])
+    print('fixation_yvar_min:', total_importances[11])
+    print('fixation_yvar_average:', total_importances[12])
+    print('fixation_xstv_max:', total_importances[13])
+    print('ixation_xstv_min:', total_importances[14])
+    print('fixation_xstv_average:', total_importances[15])
+    print('fixation_ystv_max:', total_importances[16])
+    print('fixation_ystv_min:', total_importances[17])
+    print('fixation_ystv_average:', total_importances[18])
+    print('fixation_count:', total_importances[19])
 
     print('\n')
 

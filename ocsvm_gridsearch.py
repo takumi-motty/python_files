@@ -5,6 +5,7 @@ import numpy as np
 import csv
 import math
 import os
+import decimal
 
 from sklearn import svm, ensemble
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV, StratifiedKFold
@@ -24,7 +25,7 @@ mmsc = MinMaxScaler()
 stdsc = StandardScaler()
 
 # 読み込むcsv
-m_csv_path = '/Users/motty/Desktop/for_github/python_files/read_data/motty_summary_120.csv'
+m_csv_path = '/Users/motty/Desktop/for_github/python_files/read_data/motty_summary_30.csv'
 a_csv_path = '/Users/motty/Desktop/for_github/python_files/read_data/aochi_summary.csv'
 r_csv_path = '/Users/motty/Desktop/for_github/python_files/read_data/ryonryon_summary.csv'
 i_csv_path = '/Users/motty/Desktop/for_github/python_files/read_data/iwaken_summary.csv'
@@ -305,8 +306,6 @@ def getFeatures(csv_path, name):
         # 注視回数を抽出
         fixation_count = len(xfixs)
 
-
-
         # ここで抽出した特徴量をぶち込む
         # feature.extend(xac)
         # feature.extend(yac)
@@ -334,59 +333,128 @@ def getFeatures(csv_path, name):
 
     return np.array(result, np.float32)
 
-def ocsvm_gridSearch(train, owner, attacker, nu_list, gamma_list):
+def ocsvm_gridSearch(nu_list, gamma_list, user_list):
     opt_nu = 0
     opt_gamma = 0
     max_accuracy = 0
+    tmp = user_list
+    far_list =[]
+    frr_list =[]
+
 
     # グリッドサーチ
     for nu in nu_list:
         for gamma in gamma_list:
             clf = svm.OneClassSVM(nu=nu, kernel="rbf", gamma=gamma)
-            clf.fit(train)
-            p_o = clf.predict(owner)
-            p_a = clf.predict(attacker)
-            tp = p_o[p_o == 1].size # 正しく本人を受け入れた
-            tn = p_a[p_a == -1].size # 正しく他人を拒否した
-            fp = p_a[p_a == 1].size # 誤って他人を受け入れた
-            fn = p_o[p_o == -1].size # 誤って本人を拒否した
-            accuracy = (tp + tn)/(tp + tn + fp + fn)
+            total_accuracy = 0
+            total_tp = 0
+            total_tn = 0
+            total_fp = 0
+            total_fn = 0
+            # 学習データとテストデータの準備
+            for i in range(len(user_list)):
+                attacker = []
+                owner = []
+                owner = user_list[i]
+                for j in range(len(user_list)):
+                    if(j != i):
+                        attacker.extend(user_list[j])
+                clf.fit(owner)
+                p_o = clf.predict(owner)
+                p_a = clf.predict(attacker)
+                tp = p_o[p_o == 1].size # 正しく本人を受け入れた
+                tn = p_a[p_a == -1].size # 正しく他人を拒否した
+                fp = p_a[p_a == 1].size # 誤って他人を受け入れた
+                fn = p_o[p_o == -1].size # 誤って本人を拒否した
+                ac = (tp + tn)/(tp + tn + fp + fn)
+                total_accuracy += ac
+                total_tp += tp
+                total_tn += tn
+                total_fp += fp
+                total_fn += fn
+
+            tp = total_tp / len(user_list)
+            tn = total_tn / len(user_list)
+            fp = total_fp / len(user_list)
+            fn = total_fn / len(user_list)
+            far = fp / (tn + fp)
+            frr = fn / (fn + tp)
+
+            print(far)
+            far_list.append(far)
+            frr_list.append(frr)
+
+            accuracy = total_accuracy/i
+            # 本人拒否
+            # 他人受け入れいれる
+
             if max_accuracy < accuracy:
                 max_accuracy = accuracy
                 opt_nu = nu
                 opt_gamma = gamma
 
+    print(far_list)
+    print(frr_list)
     print("best nu is ", opt_nu)
     print("best gamma is ", opt_gamma)
+
+    # チューニングしたパラメータでテスト
     # 適切なパラメータでの分類器作成
     clf = OneClassSVM(nu=opt_nu, kernel='rbf', gamma=opt_gamma)
-    clf.fit(owner)
+    total_accu = 0
+    total_prec = 0
+    total_reca = 0
+    total_fmea = 0
+    # 学習データとテストデータの準備
+    for i in range(len(user_list)):
+        attacker = []
+        owner = []
+        owner = user_list[i]
+        for j in range(len(user_list)):
+            if(j != i):
+                attacker.extend(user_list[j])
 
-    # 本人かを識別
-    p_o = clf.predict(owner)
-    # 他人かを識別
-    p_a = clf.predict(attacker)
+        clf.fit(owner)
+        # 本人かを識別
+        p_o = clf.predict(owner)
+        # 他人かを識別
+        p_a = clf.predict(attacker)
+        # print('owner score', p_o)
+        # print('attacker score', p_a)
 
-    # print('owner score', p_o)
-    # print('attacker score', p_a)
-
-    tp = p_o[p_o == 1].size # 正しく本人を受け入れた
-    tn = p_a[p_a == -1].size # 正しく他人を拒否した
-    fp = p_a[p_a == 1].size # 誤って他人を受け入れた
-    fn = p_o[p_o == -1].size # 誤って本人を拒否した
-    print(tp, tn, fp, fn)
-    accuracy = (tp + tn)/(tp + tn + fp + fn)
-    precision = tp / (tp + fp)
-    recall = tp / (tp + fn)
-    fmeasure = (2*precision*recall) / (precision + recall)
+        tp = p_o[p_o == 1].size # 正しく本人を受け入れた
+        tn = p_a[p_a == -1].size # 正しく他人を拒否した
+        fp = p_a[p_a == 1].size # 誤って他人を受け入れた
+        fn = p_o[p_o == -1].size # 誤って本人を拒否した
+        # print(tp, tn, fp, fn)
+        accu = (tp + tn)/(tp + tn + fp + fn)
+        prec = tp / (tp + fp)
+        reca = tp / (tp + fn)
+        fmea = (2*prec*reca) / (prec + reca)
+        print(fmea)
+        total_accu += accu
+        total_prec += prec
+        total_reca += reca
+        total_fmea += fmea
+    accuracy = total_accu/len(user_list)
+    precision = total_prec/len(user_list)
+    recall = total_reca/len(user_list)
+    fmeasure = total_fmea/len(user_list)
     print("precision:", precision)
     print("recall:", recall)
     print("f-measure:", fmeasure)
     print("accuracy:", accuracy)
     print('\n')
-
     return [precision, recall, accuracy, fmeasure]
 
+def setParameterList(width, num, digit):
+    parameter_list = []
+    parameter = width
+    for i in range(0, num):
+        parameter = round(parameter, digit)
+        parameter_list.append(parameter)
+        parameter = parameter + width
+    return parameter_list
 
 def main():
 
@@ -397,17 +465,27 @@ def main():
     wf = getFeatures(w_csv_path, 'w')
 
     features = np.concatenate([mf, af, rf, iwf, wf])
-    owner = mf
+    user_list = [mf, af, rf, iwf, wf]
+
     attacker = np.concatenate([af, rf, iwf, wf])
 
     x_f = features
-    x = owner
+    # x = owner
 
     # OneClassSVMのハイパーパラメータ
-    nu_list = [0.0001, 0.000001, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01, 0.011, 0.012, 0.013, 0.014, 0.7]
-    gamma_list = [0.0001, 0.0002, 0.0003, 0.001, 0.01]
+    # nu_list = [0.038]
+    gamma_list = [0.001]
+    # nu_list = [0.0001, 0.000001, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01, 0.011, 0.012, 0.013, 0.014]
+    # gamma_list = [0.0001, 0.0002, 0.0003, 0.001, 0.01]
 
-    ocsvm_gridSearch(owner, owner, attacker, nu_list, gamma_list)
+    nu_list = setParameterList(0.01, 10, 3)
+    # gamma_list = setParameterList(0.001, 100, 3)
+
+
+    print(nu_list)
+    print(gamma_list)
+
+    ocsvm_gridSearch(nu_list, gamma_list, user_list)
 
 if __name__ == '__main__':
     # i = 1
